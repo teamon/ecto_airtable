@@ -47,6 +47,28 @@ defmodule Ecto.Adapters.Airtable do
   end
 
 
+  defmodule Query do
+    def params(query, [{:&, [], [0, names, _]}]) do
+      %{}
+      |> Map.merge(fields(names))
+      |> Map.merge(limit(query))
+    end
+
+    defp limit(%Ecto.Query{limit: %Ecto.Query.QueryExpr{expr: expr}}), do: %{"pageSize" => expr}
+    defp limit(_), do: %{}
+
+    defp fields(names), do: %{"fields" => Enum.map(names -- [:id], &space_camel/1)}
+
+    def space_camel(key) do
+      key
+      |> to_string
+      |> String.split("_")
+      |> Enum.map(&String.capitalize/1)
+      |> Enum.join(" ")
+    end
+  end
+
+
   @behaviour Ecto.Adapter
 
   def __before_compile__(env), do: :ok
@@ -63,7 +85,7 @@ defmodule Ecto.Adapters.Airtable do
                       {:nocache, {:all, query}},
                       [], mapper, opts) do
 
-    {:ok, records} = Connection.all(table, params(query))
+    {:ok, records} = Connection.all(table, Query.params(query, fields))
     results = Enum.map(records, &convert(&1, fields, mapper))
     {length(results), results}
   end
@@ -74,21 +96,7 @@ defmodule Ecto.Adapters.Airtable do
   end
 
   defp get_field(record, :id), do: record["id"]
-  defp get_field(record, field), do: record["fields"][space_camel(field)]
+  defp get_field(record, field), do: record["fields"][Query.space_camel(field)]
 
-  defp space_camel(key) do
-    key
-    |> to_string
-    |> String.split("_")
-    |> Enum.map(&String.capitalize/1)
-    |> Enum.join(" ")
-  end
 
-  defp params(query) do
-    %{}
-    |> Map.merge(params_limit(query))
-  end
-
-  defp params_limit(%Ecto.Query{limit: %Ecto.Query.QueryExpr{expr: limit}}), do: %{"pageSize" => limit}
-  defp params_limit(_), do: %{}
 end
