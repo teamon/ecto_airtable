@@ -102,4 +102,11 @@ defmodule CatalogTest do
 
     refute Repo.get(Client, client.id)
   end
+
+  test "insert_all" do
+    Repo.insert_all Client, [
+      [name: "Amazon"],
+      [name: "Wallmart"]
+    ]
+  end
 end
