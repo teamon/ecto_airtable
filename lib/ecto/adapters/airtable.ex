@@ -62,7 +62,8 @@ defmodule Ecto.Adapters.Airtable do
   def execute(_repo,  %{fields: fields, sources: {{table, schema}}},
                       {:nocache, {:all, query}},
                       [], mapper, opts) do
-    {:ok, records} = Connection.all(table, [])
+
+    {:ok, records} = Connection.all(table, params(query))
     results = Enum.map(records, &convert(&1, fields, mapper))
     {length(results), results}
   end
@@ -82,4 +83,12 @@ defmodule Ecto.Adapters.Airtable do
     |> Enum.map(&String.capitalize/1)
     |> Enum.join(" ")
   end
+
+  defp params(query) do
+    %{}
+    |> Map.merge(params_limit(query))
+  end
+
+  defp params_limit(%Ecto.Query{limit: %Ecto.Query.QueryExpr{expr: limit}}), do: %{"pageSize" => limit}
+  defp params_limit(_), do: %{}
 end
