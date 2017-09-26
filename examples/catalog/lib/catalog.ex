@@ -1,0 +1,2 @@
+defmodule Catalog do
+end
