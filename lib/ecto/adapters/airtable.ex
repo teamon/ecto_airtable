@@ -72,25 +72,30 @@ defmodule Ecto.Adapters.Airtable do
 
     ## CALLBACKS
 
+    @impl true
     def init(opts) do
       {:ok, Client.new(opts[:base_id], opts[:api_key])}
     end
 
+    @impl true
     def handle_call({:all, table, params}, _from, client) do
       reply = Client.all(client, table, params)
       {:reply, reply, client}
     end
 
+    @impl true
     def handle_call({:find, table, id}, _from, client) do
       reply = Client.find(client, table, id)
       {:reply, reply, client}
     end
 
+    @impl true
     def handle_call({:insert, table, params}, _from, client) do
       reply = Client.insert(client, table, params)
       {:reply, reply, client}
     end
 
+    @impl true
     def handle_call({:update, table, id, params}, _from, client) do
       reply = Client.update(client, table, id, params)
       {:reply, reply, client}
@@ -191,7 +196,7 @@ defmodule Ecto.Adapters.Airtable do
       "{" <> space_camel(field) <> "}"
     end
 
-    defp expr({:in, [], [lhs, []]}, _params) do
+    defp expr({:in, [], [_lhs, []]}, _params) do
       "FALSE()"
     end
 
@@ -252,24 +257,37 @@ defmodule Ecto.Adapters.Airtable do
 
   @behaviour Ecto.Adapter
 
+  @impl true
   defmacro __before_compile__(_env), do: :ok
 
+  @impl true
   def child_spec(_repo, opts) do
     Supervisor.Spec.worker(Connection, [opts])
   end
 
+  @impl true
+  def ensure_all_started(_repo, _type), do: {:ok, []}
+
+  @impl true
   def loaders(primitive, _type), do: [primitive]
 
+  @impl true
   def dumpers(primitive, _type), do: [primitive]
 
+  @impl true
   def prepare(operation, query), do: {:nocache, {operation, query}}
 
+  @impl true
+  def autogenerate(_), do: ""
+
+  @impl true
   def insert(_repo, %{source: {_, table}}, fields, _on_conflict, _returning, _opts) do
     with {:ok, record} <- Connection.insert(table, attrs(fields)) do
       {:ok, convert(record, [:id | Keyword.keys(fields)])}
     end
   end
 
+  @impl true
   def update(_repo, %{source: {_, table}}, fields, filters, _returning, _opts) do
     id = Keyword.fetch!(filters, :id)
     with {:ok, record} <- Connection.update(table, id, attrs(fields)) do
@@ -277,6 +295,13 @@ defmodule Ecto.Adapters.Airtable do
     end
   end
 
+  @impl true
+  def delete(_, _, _, _), do: raise "Not Yet Implemented"
+
+  @impl true
+  def insert_all(_, _, _, _, _, _, _), do: raise "Not Yet Implemented"
+
+  @impl true
   def execute(_repo,
     %{fields: fields, sources: {{table, _schema}}},
     {:nocache, {:all, %Ecto.Query{wheres: [
@@ -292,6 +317,7 @@ defmodule Ecto.Adapters.Airtable do
     end
   end
 
+  @impl true
   def execute(_repo,  %{fields: fields, sources: {{table, _schema}}},
                       {:nocache, {:all, query}},
                       params, mapper, _opts) do

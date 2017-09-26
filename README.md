@@ -34,7 +34,7 @@ Huge thanks to @wojtekmach for [github_ecto](https://github.com/wojtekmach/githu
 - [x] Repo.all
 - [x] Repo.insert
 - [x] Repo.update
+- [ ] Repo.delete
 - [x] Repo.get
 - [x] Repo.get_by
 - [ ] Repo.insert_all
-- [ ] Repo.update_all
