@@ -4,9 +4,9 @@ defmodule CatalogTest do
   alias Catalog.Repo
   alias Catalog.Furniture
 
-  test "greets the world" do
-    assert furnitures = Repo.all(Furniture)
-    assert length(furnitures) == 5
+  test "get all furniture" do
+    assert furnitures = Furniture |> Repo.all()
+    assert length(furnitures) == 20
     assert %Furniture{} = hd(furnitures)
   end
 end
