@@ -5,6 +5,7 @@ defmodule Catalog.Furniture do
   schema "Furniture" do
     field :name, :string
     field :type, :string
+    field :unit_cost, Ecto.Adapters.Airtable.Number
     field :in_stock, :boolean
   end
 end

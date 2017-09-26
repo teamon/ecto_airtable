@@ -46,4 +46,19 @@ defmodule CatalogTest do
     assert furnitures = Furniture |> where([f], f.type in ^types) |> Repo.all()
     assert length(furnitures) == 9
   end
+
+  test "filter unit_cost > 1000" do
+    assert furnitures = Furniture |> where([f], f.unit_cost > 1000) |> Repo.all()
+    assert length(furnitures) == 12
+  end
+
+  test "filter notes not empty" do
+    assert furnitures = Furniture |> where([f], not(is_nil(f.notes))) |> Repo.all()
+    assert length(furnitures) == 2
+  end
+
+  test "filter name starts with B" do
+    assert furnitures = Furniture |> where([f], fragment(~S|LEFT(?, 1) = "B"|, f.name)) |> Repo.all()
+    assert length(furnitures) == 4
+  end
 end

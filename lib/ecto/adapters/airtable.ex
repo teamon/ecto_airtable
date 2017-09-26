@@ -47,6 +47,15 @@ defmodule Ecto.Adapters.Airtable do
   end
 
 
+  defmodule Number do
+    @behaviour Ecto.Type
+    def type, do: __MODULE__
+    def cast(num), do: {:ok, num}
+    def load(num), do: {:ok, num}
+    def dump(num), do: {:ok, num}
+  end
+
+
   defmodule Query do
     def params(query, [{:&, [], [0, names, _]}], params) do
       %{}
@@ -76,12 +85,36 @@ defmodule Ecto.Adapters.Airtable do
       expr(lhs, params) <> " = " <> expr(rhs, params)
     end
 
+    defp expr({:>, [], [lhs, rhs]}, params) do
+      expr(lhs, params) <> " > " <> expr(rhs, params)
+    end
+
     defp expr({:and, [], [lhs, rhs]}, params) do
       fun("AND", [expr(lhs, params), expr(rhs, params)])
     end
 
     defp expr({:or, [], [lhs, rhs]}, params) do
       fun("OR", [expr(lhs, params), expr(rhs, params)])
+    end
+
+    defp expr({:not, [], [lhs]}, params) do
+      fun("NOT", [expr(lhs, params)])
+    end
+
+    defp expr({:is_nil, [], [lhs]}, params) do
+      expr(lhs, params) <> " = BLANK()"
+    end
+
+    defp expr({:fragment, [], parts}, params) do
+      Enum.map_join(parts, &expr(&1, params))
+    end
+
+    defp expr({:raw, raw}, _) do
+      raw
+    end
+
+    defp expr({:expr, expr}, params) do
+      expr(expr, params)
     end
 
     defp expr({{:., _, [{:&, _, [_idx]}, field]}, _, []}, _) do
@@ -104,8 +137,7 @@ defmodule Ecto.Adapters.Airtable do
       |> Enum.map(&expr(&1, params))
     end
 
-    defp expr(string, _) when is_binary(string), do: inspect(string)
-    # defp expr(list, params) when is_list(list), do: Enum.map
+    defp expr(lit, _) when is_binary(lit) or is_number(lit), do: inspect(lit)
 
     defp expr(true, _), do: "TRUE()"
     defp expr(false, _), do: "FALSE()"
