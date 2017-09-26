@@ -4,6 +4,7 @@ defmodule Catalog.Furniture do
   @primary_key {:id, :string, []}
   schema "Furniture" do
     field :name, :string
+    field :type, :string
     field :in_stock, :boolean
   end
 end

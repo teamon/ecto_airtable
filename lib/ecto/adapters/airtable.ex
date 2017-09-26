@@ -48,8 +48,9 @@ defmodule Ecto.Adapters.Airtable do
 
 
   defmodule Query do
-    def params(query, [{:&, [], [0, names, _]}]) do
+    def params(query, [{:&, [], [0, names, _]}], params) do
       %{}
+      |> Map.merge(where(query, params))
       |> Map.merge(fields(names))
       |> Map.merge(limit(query))
     end
@@ -58,6 +59,60 @@ defmodule Ecto.Adapters.Airtable do
     defp limit(_), do: %{}
 
     defp fields(names), do: %{"fields" => Enum.map(names -- [:id], &space_camel/1)}
+
+    defp where(%Ecto.Query{wheres: []}, _), do: %{}
+    defp where(%Ecto.Query{wheres: wheres} = query, params) do
+      formula = case Enum.map(wheres, fn where -> expr(where.expr, where.params || params) end) do
+        [one] -> one
+        many -> fun("AND", many)
+      end
+
+      IO.puts formula
+
+      %{"filterByFormula" => formula}
+    end
+
+    defp expr({:==, [], [lhs, rhs]}, params) do
+      expr(lhs, params) <> " = " <> expr(rhs, params)
+    end
+
+    defp expr({:and, [], [lhs, rhs]}, params) do
+      fun("AND", [expr(lhs, params), expr(rhs, params)])
+    end
+
+    defp expr({:or, [], [lhs, rhs]}, params) do
+      fun("OR", [expr(lhs, params), expr(rhs, params)])
+    end
+
+    defp expr({{:., _, [{:&, _, [_idx]}, field]}, _, []}, _) do
+      "{" <> space_camel(field) <> "}"
+    end
+
+    defp expr({:in, [], [lhs, rhs]}, params) do
+      field = expr(lhs, params)
+      args  = Enum.map(expr(rhs, params), &(field <> " = " <> &1))
+      fun("OR", args)
+    end
+
+    defp expr({:^, [], [i]}, params) do
+      expr(Enum.at(params, i), params)
+    end
+
+    defp expr({:^, [], [i,n]}, params) do
+      params
+      |> Enum.slice(i, n)
+      |> Enum.map(&expr(&1, params))
+    end
+
+    defp expr(string, _) when is_binary(string), do: inspect(string)
+    # defp expr(list, params) when is_list(list), do: Enum.map
+
+    defp expr(true, _), do: "TRUE()"
+    defp expr(false, _), do: "FALSE()"
+
+    defp fun(f, args) do
+      "#{f}(" <> Enum.join(args, ",") <> ")"
+    end
 
     def space_camel(key) do
       key
@@ -79,13 +134,14 @@ defmodule Ecto.Adapters.Airtable do
 
   def loaders(primitive, _type), do: [primitive]
 
+  def dumpers(primitive, _type), do: [primitive]
+
   def prepare(operation, query), do: {:nocache, {operation, query}}
 
   def execute(_repo,  %{fields: fields, sources: {{table, schema}}},
                       {:nocache, {:all, query}},
-                      [], mapper, opts) do
-
-    {:ok, records} = Connection.all(table, Query.params(query, fields))
+                      params, mapper, opts) do
+    {:ok, records} = Connection.all(table, Query.params(query, fields, params))
     results = Enum.map(records, &convert(&1, fields, mapper))
     {length(results), results}
   end
@@ -97,6 +153,4 @@ defmodule Ecto.Adapters.Airtable do
 
   defp get_field(record, :id), do: record["id"]
   defp get_field(record, field), do: record["fields"][Query.space_camel(field)]
-
-
 end
