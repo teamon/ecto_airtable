@@ -1,11 +1,9 @@
-# EctoAirtable
+# Ecto adapter for Airtable
 
-**TODO: Add description**
+**THIS ISN'T EVEN ALPHA, USE AT YOUR VERY OWN RISK!**
+
 
 ## Installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `ecto_airtable` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
@@ -15,7 +13,18 @@ def deps do
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/ecto_airtable](https://hexdocs.pm/ecto_airtable).
+## Configuration
 
+```elixir
+# config/config.exs
+
+config :myapp, MyApp.Repo,
+  adapter: Ecto.Adapter.Airtable,
+  api_key: "your-api-key",
+  base_id: "base-id"
+
+```
+
+## Credits
+
+Huge thanks to @wojtekmach for [github_ecto](https://github.com/wojtekmach/github_ecto)
