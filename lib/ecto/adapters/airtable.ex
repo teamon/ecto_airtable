@@ -51,7 +51,11 @@ defmodule Ecto.Adapters.Airtable do
   end
 
   @impl true
-  def delete(_, _, _, _), do: raise "Not Yet Implemented"
+  def delete(_repo, %{source: {_, table}}, [id: id], opts) do
+    with :ok <- Connection.delete(table, id) do
+      {:ok, []}
+    end
+  end
 
   @impl true
   def insert_all(_, _, _, _, _, _, _), do: raise "Not Yet Implemented"

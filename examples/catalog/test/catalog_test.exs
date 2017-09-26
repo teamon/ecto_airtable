@@ -95,4 +95,11 @@ defmodule CatalogTest do
     assert {:ok, client} = client |> change(notes: "Wow") |> Repo.update
     assert client.notes == "Wow"
   end
+
+  test "delete Client" do
+    assert {:ok, client} = %Client{name: "Google", notes: "Cool"} |> Repo.insert
+    assert {:ok, _} = client |> Repo.delete
+
+    refute Repo.get(Client, client.id)
+  end
 end

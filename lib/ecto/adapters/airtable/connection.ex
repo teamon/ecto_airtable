@@ -23,6 +23,10 @@ defmodule Ecto.Adapters.Airtable.Connection do
     GenServer.call(__MODULE__, {:update, table, id, params})
   end
 
+  def delete(table, id) do
+    GenServer.call(__MODULE__, {:delete, table, id})
+  end
+
   ## CALLBACKS
 
   @impl true
@@ -51,6 +55,12 @@ defmodule Ecto.Adapters.Airtable.Connection do
   @impl true
   def handle_call({:update, table, id, params}, _from, client) do
     reply = Client.update(client, table, id, params)
+    {:reply, reply, client}
+  end
+
+  @impl true
+  def handle_call({:delete, table, id}, _from, client) do
+    reply = Client.del(client, table, id)
     {:reply, reply, client}
   end
 end

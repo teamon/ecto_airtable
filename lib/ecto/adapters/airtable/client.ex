@@ -22,6 +22,7 @@ defmodule Ecto.Adapters.Airtable.Client do
     case get(client, path(table, id)) do
       %{status: 200, body: record} -> {:ok, record}
       %{status: 404} -> {:error, :not_found}
+      %{status: 422, body: %{"stateCheckFail" => true}} -> {:error, :not_found}
       env -> {:error, env}
     end
   end
@@ -36,6 +37,13 @@ defmodule Ecto.Adapters.Airtable.Client do
   def update(client, table, id, fields) do
     case patch(client, path(table, id), %{"fields" => fields}) do
       %{status: 200, body: record} -> {:ok, record}
+      env -> {:error, env}
+    end
+  end
+
+  def del(client, table, id) do
+    case delete(client, path(table, id)) do
+      %{status: 200} -> :ok
       env -> {:error, env}
     end
   end
