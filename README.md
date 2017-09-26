@@ -1,6 +1,6 @@
-# Ecto adapter for Airtable
+# Ecto adapter for [Airtable](https://airtable.com/)
 
-**THIS ISN'T EVEN ALPHA, USE AT YOUR VERY OWN RISK!**
+**THIS IS EARLY STAGE ALPHA SOFTWARE, USE AT YOUR VERY OWN RISK!**
 
 
 ## Installation
@@ -8,7 +8,7 @@
 ```elixir
 def deps do
   [
-    {:ecto_airtable, "~> 0.1.0"}
+    {:ecto_airtable, github: "teamon/ecto_airtable"}
   ]
 end
 ```
