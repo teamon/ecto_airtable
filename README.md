@@ -19,7 +19,7 @@ end
 # config/config.exs
 
 config :myapp, MyApp.Repo,
-  adapter: Ecto.Adapter.Airtable,
+  adapter: Ecto.Adapters.Airtable,
   api_key: "your-api-key",
   base_id: "base-id"
 

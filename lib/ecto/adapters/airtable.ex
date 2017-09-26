@@ -58,35 +58,50 @@ defmodule Ecto.Adapters.Airtable do
 
   defmodule Query do
     def params(query, [{:&, [], [0, names, _]}], params) do
-      %{}
-      |> Map.merge(where(query, params))
-      |> Map.merge(fields(names))
-      |> Map.merge(limit(query))
+      %{
+        "filterByFormula" => where(query, params),
+        "fields" => fields(names),
+        "limit" => limit(query)
+      }
+      |> Enum.filter(fn {_,v} -> v end)
     end
 
-    defp limit(%Ecto.Query{limit: %Ecto.Query.QueryExpr{expr: expr}}), do: %{"pageSize" => expr}
-    defp limit(_), do: %{}
+    def limit(%Ecto.Query{limit: %Ecto.Query.QueryExpr{expr: expr}}), do: expr(expr, [])
+    def limit(_), do: nil
 
-    defp fields(names), do: %{"fields" => Enum.map(names -- [:id], &space_camel/1)}
+    defp fields(names), do: Enum.map(names -- [:id], &space_camel/1)
 
-    defp where(%Ecto.Query{wheres: []}, _), do: %{}
-    defp where(%Ecto.Query{wheres: wheres} = query, params) do
-      formula = case Enum.map(wheres, fn where -> expr(where.expr, where.params || params) end) do
+    def where(query, params \\ [])
+    def where(%Ecto.Query{wheres: []}, _), do: nil
+    def where(%Ecto.Query{wheres: wheres} = query, params) do
+      case Enum.map(wheres, fn where -> expr(where.expr, where.params || params) end) do
         [one] -> one
         many -> fun("AND", many)
       end
-
-      IO.puts formula
-
-      %{"filterByFormula" => formula}
     end
 
     defp expr({:==, [], [lhs, rhs]}, params) do
-      expr(lhs, params) <> " = " <> expr(rhs, params)
+      eq(expr(lhs, params), expr(rhs, params))
+    end
+
+    defp expr({:!=, [], [lhs, rhs]}, params) do
+      expr(lhs, params) <> " != " <> expr(rhs, params)
     end
 
     defp expr({:>, [], [lhs, rhs]}, params) do
       expr(lhs, params) <> " > " <> expr(rhs, params)
+    end
+
+    defp expr({:>=, [], [lhs, rhs]}, params) do
+      expr(lhs, params) <> " >= " <> expr(rhs, params)
+    end
+
+    defp expr({:<, [], [lhs, rhs]}, params) do
+      expr(lhs, params) <> " < " <> expr(rhs, params)
+    end
+
+    defp expr({:<=, [], [lhs, rhs]}, params) do
+      expr(lhs, params) <> " <= " <> expr(rhs, params)
     end
 
     defp expr({:and, [], [lhs, rhs]}, params) do
@@ -117,14 +132,29 @@ defmodule Ecto.Adapters.Airtable do
       expr(expr, params)
     end
 
+    defp expr({expr, _type}, params) do
+      expr(expr, params)
+    end
+
     defp expr({{:., _, [{:&, _, [_idx]}, field]}, _, []}, _) do
       "{" <> space_camel(field) <> "}"
     end
 
-    defp expr({:in, [], [lhs, rhs]}, params) do
+    defp expr({:in, [], [lhs, []]}, params) do
+      "FALSE()"
+    end
+
+    defp expr({:in, [], [lhs, rhs]}, params)do
       field = expr(lhs, params)
-      args  = Enum.map(expr(rhs, params), &(field <> " = " <> &1))
-      fun("OR", args)
+      case expr(rhs, params) do
+        [] ->
+          "FALSE()"
+        [_|_] = list ->
+          args  = Enum.map(list, &eq(field, &1))
+          fun("OR", args)
+        exp when is_binary(exp) ->
+          eq(field, exp)
+      end
     end
 
     defp expr({:^, [], [i]}, params) do
@@ -137,13 +167,30 @@ defmodule Ecto.Adapters.Airtable do
       |> Enum.map(&expr(&1, params))
     end
 
-    defp expr(lit, _) when is_binary(lit) or is_number(lit), do: inspect(lit)
+    defp expr(%Ecto.Query.Tagged{type: _type, value: value}, params) do
+      expr(value, params)
+    end
+
+    defp expr({expr, {_, _}}, params) do
+      expr(expr, params)
+    end
 
     defp expr(true, _), do: "TRUE()"
     defp expr(false, _), do: "FALSE()"
 
+    defp expr(bin, _) when is_binary(bin), do: ~s|"#{bin}"|
+    defp expr(num, _) when is_number(num), do: to_string(num)
+
+    defp expr(list, params) when is_list(list) do
+      Enum.map(list, &expr(&1, params))
+    end
+
     defp fun(f, args) do
       "#{f}(" <> Enum.join(args, ",") <> ")"
+    end
+
+    defp eq(lhs, rhs) do
+      lhs <> " = " <> rhs
     end
 
     def space_camel(key) do
