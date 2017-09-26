@@ -25,6 +25,10 @@ config :myapp, MyApp.Repo,
 
 ```
 
+## Usage
+
+See [examples/catalog] for example usage.
+
 ## Credits
 
 Huge thanks to @wojtekmach for [github_ecto](https://github.com/wojtekmach/github_ecto)
@@ -38,3 +42,4 @@ Huge thanks to @wojtekmach for [github_ecto](https://github.com/wojtekmach/githu
 - [x] Repo.get
 - [x] Repo.get_by
 - [ ] Repo.insert_all
+- [ ] Persistent HTTP connections pool
