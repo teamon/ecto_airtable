@@ -6,6 +6,7 @@ defmodule Catalog.Furniture do
     field :name, :string
     field :type, :string
     field :unit_cost, Ecto.Adapters.Airtable.Number
+    field :picture, Ecto.Adapters.Airtable.Attachments
     field :in_stock, :boolean
   end
 end

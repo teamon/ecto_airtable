@@ -44,6 +44,7 @@ Huge thanks to @wojtekmach for [github_ecto](https://github.com/wojtekmach/githu
 - [x] Repo.insert_all
 - [ ] Persistent HTTP connections pool
 - [ ] Complex field types
+  - [x] Attachments
+  - [ ] Relations - Link to another record
 - [ ] Embedded schemas
-- [ ] Relations (?)
 - [ ] Proper support for multiple repos

@@ -7,6 +7,44 @@ defmodule Ecto.Adapters.Airtable do
     def dump(num), do: {:ok, num}
   end
 
+  defmodule Attachments do
+    @behaviour Ecto.Type
+
+    def type, do: __MODULE__
+
+    def cast(num), do: {:ok, num}
+
+    def load(attachments) do
+      {:ok, Enum.map(attachments, &load_attachment/1)}
+    end
+
+    def dump(num), do: {:ok, num}
+
+    defp load_attachment(attachment) do
+      %{
+        id:       attachment["id"],
+        url:      attachment["url"],
+        filename: attachment["filename"],
+        size:     attachment["size"],
+        type:     attachment["type"],
+        width:    attachment["width"],
+        height:   attachment["height"],
+        thumbnails: %{
+          small: load_thumbnail(attachment["thumbnails"]["small"]),
+          large: load_thumbnail(attachment["thumbnails"]["large"])
+        }
+      }
+    end
+
+    defp load_thumbnail(thumb) do
+      %{
+        url:    thumb["url"],
+        width:  thumb["width"],
+        height: thumb["height"]
+      }
+    end
+  end
+
   alias Ecto.Adapters.Airtable.Query
   alias Ecto.Adapters.Airtable.Connection
 

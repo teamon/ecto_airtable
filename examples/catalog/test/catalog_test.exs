@@ -4,6 +4,7 @@ defmodule CatalogTest do
   alias Catalog.Repo
   alias Catalog.Furniture
   alias Catalog.Client
+  alias Catalog.Vendor
 
   import Ecto.Query
   import Ecto.Changeset
@@ -63,6 +64,31 @@ defmodule CatalogTest do
   test "filter name starts with B" do
     assert furnitures = Furniture |> where([f], fragment(~S|LEFT(?, 1) = "B"|, f.name)) |> Repo.all()
     assert length(furnitures) == 4
+  end
+
+  test "load attachment field" do
+    shelf = Repo.get(Furniture, "recXxbKyrgyYwDvcN")
+    assert length(shelf.picture) == 5
+    assert [picture | _] = shelf.picture
+    assert is_binary(picture.url)
+    assert is_binary(picture.thumbnails.small.url)
+    assert is_binary(picture.thumbnails.large.url)
+  end
+
+  test "insert attachments" do
+    vendor = %Vendor{
+      name: "Tymon",
+      logo: [
+        %{url: "http://teamon.eu/assets/images/me.jpg"}
+      ]
+    }
+    assert {:ok, vendor} = Repo.insert(vendor)
+
+    # reload since Airtable does not immidiately return thumbs info
+    vendor = Repo.get(Vendor, vendor.id)
+    assert vendor.id != nil
+    assert vendor.name == "Tymon"
+    assert hd(vendor.logo).thumbnails.small.url != nil
   end
 
   test "get by id" do
