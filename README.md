@@ -43,3 +43,6 @@ Huge thanks to @wojtekmach for [github_ecto](https://github.com/wojtekmach/githu
 - [x] Repo.get_by
 - [ ] Repo.insert_all
 - [ ] Persistent HTTP connections pool
+- [ ] Complex field types
+- [ ] Embedded schemas
+- [ ] Relations (?)
