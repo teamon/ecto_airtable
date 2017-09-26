@@ -28,3 +28,13 @@ config :myapp, MyApp.Repo,
 ## Credits
 
 Huge thanks to @wojtekmach for [github_ecto](https://github.com/wojtekmach/github_ecto)
+
+
+## Progress
+- [x] Repo.all
+- [x] Repo.insert
+- [x] Repo.update
+- [x] Repo.get
+- [x] Repo.get_by
+- [ ] Repo.insert_all
+- [ ] Repo.update_all

@@ -12,12 +12,36 @@ defmodule Ecto.Adapters.Airtable do
       ]
     end
 
-    def all(client, table, params) do
-      case get(client, table, query: params) do
+    def all(client, table, query) do
+      case get(client, table, query: query) do
         %{status: 200, body: %{"records" => records}} -> {:ok, records}
         env -> {:error, env}
       end
     end
+
+    def find(client, table, id) do
+      case get(client, path(table, id)) do
+        %{status: 200, body: record} -> {:ok, record}
+        %{status: 404} -> {:error, :not_found}
+        env -> {:error, env}
+      end
+    end
+
+    def insert(client, table, fields) do
+      case post(client, table, %{"fields" => fields}) do
+        %{status: 200, body: record} -> {:ok, record}
+        env -> {:error, env}
+      end
+    end
+
+    def update(client, table, id, fields) do
+      case patch(client, path(table, id), %{"fields" => fields}) do
+        %{status: 200, body: record} -> {:ok, record}
+        env -> {:error, env}
+      end
+    end
+
+    defp path(table, id), do: table <> "/" <> id
   end
 
 
@@ -34,6 +58,18 @@ defmodule Ecto.Adapters.Airtable do
       GenServer.call(__MODULE__, {:all, table, params})
     end
 
+    def find(table, id) do
+      GenServer.call(__MODULE__, {:find, table, id})
+    end
+
+    def insert(table, params) do
+      GenServer.call(__MODULE__, {:insert, table, params})
+    end
+
+    def update(table, id, params) do
+      GenServer.call(__MODULE__, {:update, table, id, params})
+    end
+
     ## CALLBACKS
 
     def init(opts) do
@@ -42,6 +78,21 @@ defmodule Ecto.Adapters.Airtable do
 
     def handle_call({:all, table, params}, _from, client) do
       reply = Client.all(client, table, params)
+      {:reply, reply, client}
+    end
+
+    def handle_call({:find, table, id}, _from, client) do
+      reply = Client.find(client, table, id)
+      {:reply, reply, client}
+    end
+
+    def handle_call({:insert, table, params}, _from, client) do
+      reply = Client.insert(client, table, params)
+      {:reply, reply, client}
+    end
+
+    def handle_call({:update, table, id, params}, _from, client) do
+      reply = Client.update(client, table, id, params)
       {:reply, reply, client}
     end
   end
@@ -73,7 +124,7 @@ defmodule Ecto.Adapters.Airtable do
 
     def where(query, params \\ [])
     def where(%Ecto.Query{wheres: []}, _), do: nil
-    def where(%Ecto.Query{wheres: wheres} = query, params) do
+    def where(%Ecto.Query{wheres: wheres}, params) do
       case Enum.map(wheres, fn where -> expr(where.expr, where.params || params) end) do
         [one] -> one
         many -> fun("AND", many)
@@ -140,7 +191,7 @@ defmodule Ecto.Adapters.Airtable do
       "{" <> space_camel(field) <> "}"
     end
 
-    defp expr({:in, [], [lhs, []]}, params) do
+    defp expr({:in, [], [lhs, []]}, _params) do
       "FALSE()"
     end
 
@@ -169,10 +220,6 @@ defmodule Ecto.Adapters.Airtable do
 
     defp expr(%Ecto.Query.Tagged{type: _type, value: value}, params) do
       expr(value, params)
-    end
-
-    defp expr({expr, {_, _}}, params) do
-      expr(expr, params)
     end
 
     defp expr(true, _), do: "TRUE()"
@@ -205,9 +252,9 @@ defmodule Ecto.Adapters.Airtable do
 
   @behaviour Ecto.Adapter
 
-  def __before_compile__(env), do: :ok
+  defmacro __before_compile__(_env), do: :ok
 
-  def child_spec(repo, opts) do
+  def child_spec(_repo, opts) do
     Supervisor.Spec.worker(Connection, [opts])
   end
 
@@ -217,9 +264,37 @@ defmodule Ecto.Adapters.Airtable do
 
   def prepare(operation, query), do: {:nocache, {operation, query}}
 
-  def execute(_repo,  %{fields: fields, sources: {{table, schema}}},
+  def insert(_repo, %{source: {_, table}}, fields, _on_conflict, _returning, _opts) do
+    with {:ok, record} <- Connection.insert(table, attrs(fields)) do
+      {:ok, convert(record, [:id | Keyword.keys(fields)])}
+    end
+  end
+
+  def update(_repo, %{source: {_, table}}, fields, filters, _returning, _opts) do
+    id = Keyword.fetch!(filters, :id)
+    with {:ok, record} <- Connection.update(table, id, attrs(fields)) do
+      {:ok, convert(record, [:id | Keyword.keys(fields)])}
+    end
+  end
+
+  def execute(_repo,
+    %{fields: fields, sources: {{table, _schema}}},
+    {:nocache, {:all, %Ecto.Query{wheres: [
+      %Ecto.Query.BooleanExpr{expr: {:==, [], [{{:., [], [{:&, [], [0]}, :id]}, [], []}, {:^, [], [0]}]}}]
+    }}},
+    [id], mapper, _opts)
+  do
+    case Connection.find(table, id) do
+      {:ok, record} ->
+        {1, [convert(record, fields, mapper)]}
+      {:error, :not_found} ->
+        {0, []}
+    end
+  end
+
+  def execute(_repo,  %{fields: fields, sources: {{table, _schema}}},
                       {:nocache, {:all, query}},
-                      params, mapper, opts) do
+                      params, mapper, _opts) do
     {:ok, records} = Connection.all(table, Query.params(query, fields, params))
     results = Enum.map(records, &convert(&1, fields, mapper))
     {length(results), results}
@@ -230,6 +305,15 @@ defmodule Ecto.Adapters.Airtable do
     [mapper.(fd, values, nil)]
   end
 
+  defp convert(record, fields) do
+    fields
+    |> Enum.map(&{&1, get_field(record, &1)})
+  end
+
   defp get_field(record, :id), do: record["id"]
   defp get_field(record, field), do: record["fields"][Query.space_camel(field)]
+
+  defp attrs(fields) do
+    Enum.into(fields, %{}, fn {field, value} -> {Query.space_camel(field), value} end)
+  end
 end

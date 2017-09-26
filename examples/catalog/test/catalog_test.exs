@@ -3,7 +3,10 @@ defmodule CatalogTest do
 
   alias Catalog.Repo
   alias Catalog.Furniture
+  alias Catalog.Client
+
   import Ecto.Query
+  import Ecto.Changeset
 
   test "get all furniture" do
     assert furnitures = Furniture |> Repo.all()
@@ -60,5 +63,36 @@ defmodule CatalogTest do
   test "filter name starts with B" do
     assert furnitures = Furniture |> where([f], fragment(~S|LEFT(?, 1) = "B"|, f.name)) |> Repo.all()
     assert length(furnitures) == 4
+  end
+
+  test "get by id" do
+    client = Client |> Repo.get("recYwiKKzloXywr4C")
+    assert client.id != nil
+    assert client.name == "Abbey Realty"
+  end
+
+  test "get_by id" do
+    client = Client |> Repo.get_by(id: "recYwiKKzloXywr4C")
+    assert client.id != nil
+    assert client.name == "Abbey Realty"
+  end
+
+  test "get_by name" do
+    client = Client |> Repo.get_by(name: "Abbey Realty")
+    assert client.id != nil
+    assert client.name == "Abbey Realty"
+  end
+
+  test "insert Client" do
+    assert {:ok, client} = %Client{name: "Google", notes: "Cool"} |> Repo.insert
+    assert client.id != nil
+    assert client.name == "Google"
+    assert client.notes == "Cool"
+  end
+
+  test "update Client" do
+    client = Client |> where(name: "Abbey Realty") |> Repo.one
+    assert {:ok, client} = client |> change(notes: "Wow") |> Repo.update
+    assert client.notes == "Wow"
   end
 end
